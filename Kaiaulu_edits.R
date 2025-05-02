@@ -309,3 +309,101 @@ parse_github_replies <- function(github_replies_folder_path){
   
   return(replies)
 }
+
+
+
+
+
+
+community_oslom <- function(oslom_bin_dir_undir_path,graph,seed,n_runs,is_weighted){
+  
+  edgelist <- graph[["edgelist"]]
+  
+  oslom_bin_dir_undir_path <- path.expand(oslom_bin_dir_undir_path)
+  mapping_names <- unique(c(as.character(edgelist$from),edgelist$to))
+  mapping_ids <- 1:length(mapping_names)
+  names(mapping_ids) <- mapping_names
+  weight_flag <- ""
+  
+  if(is_weighted){
+    oslom_edgelist <- data.table(mapping_ids[edgelist$from],
+                                 mapping_ids[edgelist$to],
+                                 edgelist$weight)
+    weight_flag <- "-w"
+  }else{
+    oslom_edgelist <- data.table(mapping_ids[edgelist$from],
+                                 mapping_ids[edgelist$to])
+  }
+  
+  
+  fwrite(oslom_edgelist,"/tmp/oslom_edgelist.txt",
+         sep = "\t",
+         row.names = FALSE,
+         col.names = FALSE)
+
+  
+  print(c(oslom_bin_dir_undir_path, weight_flag, seed, n_runs))
+  system2(
+    oslom_bin_dir_undir_path,
+    args = c('-f', '/tmp/oslom_edgelist.txt',weight_flag,'-seed',seed, '-r',n_runs),
+    stdout = F,
+    stderr = F
+  )
+  f_con <- file("/tmp/oslom_edgelist.txt_oslo_files/tp")
+  tp_raw <- readLines(f_con)
+  close(f_con)
+  cluster_metadata <- stri_match(tp_raw,regex="#module (.+) size: (.+) bs: (.+)")
+  
+  is_node_line <- which(is.na(cluster_metadata[,1]))
+  is_cluster_line <- which(!is.na(cluster_metadata[,1]))
+  
+  cluster_id <- cluster_metadata[is_cluster_line,2]
+  cluster_size <- as.integer(cluster_metadata[is_cluster_line,3])
+  cluster_pvalue <- cluster_metadata[is_cluster_line,4]
+  cluster_nodes <- tp_raw[is_node_line]
+  
+  cluster_nodes_list <- stri_split(cluster_nodes,regex=" ")
+  names(cluster_nodes_list) <- cluster_id
+  
+  # Remove "" strings added as ending element, create data.table and assign ids
+  prepare_data_table <- function(name,x){
+    dt <- data.table(node_id=x[[name]][x[[name]] != ""],cluster_id=name)
+    return(dt)
+  }
+  cluster_assignment <- rbindlist(lapply(names(cluster_nodes_list),
+                                         prepare_data_table,
+                                         cluster_nodes_list))
+  
+  # Replace temporary id by original values
+  cluster_assignment$node_id <- mapping_names[as.numeric(cluster_assignment$node_id)]
+  cluster <- list()
+  cluster[["assignment"]] <- cluster_assignment
+  cluster[["info"]] <- data.table(cluster_id,cluster_size,cluster_pvalue)
+  
+  # assign a unique and different from existing cluster id to all nodes which have no neighbors
+  isolated_node_ids <- setdiff(graph[["nodes"]]$name,cluster[["assignment"]]$node_id)
+  
+  if(length(isolated_node_ids) > 0){
+    isolated_nodes_cluster_ids <- max(as.numeric(cluster[["assignment"]]$cluster_id)) + 1
+    isolated_nodes_cluster_ids <- as.character(seq.int(from=isolated_nodes_cluster_ids,
+                                                       length.out = length(isolated_node_ids)))
+    isolated_cluster_assignments <- data.table(node_id=isolated_node_ids,
+                                               cluster_id=isolated_nodes_cluster_ids)
+    
+    cluster[["assignment"]] <- rbind(cluster[["assignment"]],
+                                     isolated_cluster_assignments)
+    
+    isolated_cluster_infos <- data.table(cluster_id=isolated_nodes_cluster_ids,
+                                         cluster_size=1,
+                                         cluster_pvalue=NA)
+    
+    cluster[["info"]] <- rbind(cluster[["info"]],
+                               isolated_cluster_infos)
+  }
+  
+  # Indexes starting cluster id to 1 instead of 0 to align with R indexes
+  cluster[["assignment"]]$cluster_id <- as.character(as.numeric(cluster[["assignment"]]$cluster_id) + 1)
+  cluster[["info"]]$cluster_id <- as.character(as.numeric(cluster[["info"]]$cluster_id) + 1)
+  
+  return(cluster)
+}
