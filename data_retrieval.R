@@ -404,8 +404,8 @@ smells_interval <- rbindlist(smells)
 
 
 # Transform commit hashes into datetime so window_size can be used
-start_date <- project_reply[5702,"reply_datetimetz"][[1]]
-end_date <- project_reply[45096,"reply_datetimetz"][[1]]
+start_date <- project_reply[15954,"reply_datetimetz"][[1]]
+end_date <- project_reply[13627,"reply_datetimetz"][[1]]
 datetimes <- project_git$author_datetimetz
 reply_datetimes <- project_reply$reply_datetimetz
 
@@ -417,13 +417,12 @@ window_size_f <- stringi::stri_c(window_size," day")
 # in a smaller interval
 time_window <- seq.POSIXt(from=start_date,to=end_date,by=window_size_f)
 
-
 oslom_dir_path = '~/Downloads/OSLOM2/OSLOM2/oslom_dir'
 oslom_undir_path = '~/Downloads/OSLOM2/OSLOM2/oslom_undir'
 # Create a list where each element is the social smells calculated for a given commit hash
-smells <- list()
+network_data <- list()
 size_time_window <- length(time_window)
-
+total_results = data.table()
 # Create the wanted metrics per developer
 for (j in 2:length(time_window)){
   i <- j - 1
@@ -497,8 +496,13 @@ for (j in 2:length(time_window)){
                                                 clusters = mail_clusters)
     
     result = data.table('Radio Silence' = git_network_authors$nodes$name %in% radio_silence_brokers)
+    result = cbind(result, 'Alias'= git_network_authors$nodes$name)
     rownames(result) = git_network_authors$nodes$name
     
+  }
+  
+  if (nrow(total_results)==0){
+    total_results$Alias = git_network_authors$nodes$name
   }
   if (ml_exist & gitlog_exist){
     # Smells 
@@ -549,10 +553,38 @@ for (j in 2:length(time_window)){
     
     result = cbind('Avg. distance' = neighbor_distances, result)
     
-    result = cbind('Messages Sent' = )
+    result = cbind('Messages Sent' = as.vector(table(project_reply_slice$reply_from)[git_network_authors$nodes$name]), result)
+    
+    project_git_slice$lines_added= as.numeric(project_git_slice$lines_added)
+    project_git_slice$lines_removed= as.numeric(project_git_slice$lines_removed)
+    
+    workload_dt = project_git_slice[, sum(lines_added, lines_removed, na.rm=T), by = author_name_email]
+    result = cbind('Workload' = workload_dt[match(workload_dt$author_name_email, git_network_authors$nodes$name),V1], result)
   }
   
   
+  
+  # Aggregate Network Metrics
+  network_data[[stringi::stri_c(start_day,"|",end_day)]] <- data.table(commit_interval,
+                                                                 start_datetime = start_day,
+                                                                 end_datetime = end_day,
+                                                                 st_congruence,
+                                                                 nr_timezones = num_tz,
+                                                                 code_only_devs,
+                                                                 code_files,
+                                                                 ml_only_devs,
+                                                                 ml_threads,
+                                                                 code_ml_both_devs,
+                                                                 reply_degree = igraph::centr_degree(reply_igraph),
+                                                                 reply_close = igraph::centr_clo(reply_igraph)$centralization,
+                                                                 reply_between = igraph::centr_betw(reply_igraph)$centralization,
+                                                                 git_degree = igraph::centr_degree(git_igraph),
+                                                                 git_close = igraph::centr_clo(git_igraph)$centralization,
+                                                                 git_between = igraph::centr_betw(git_igraph)$centralization,
+                                                                 reply_density = igraph::edge_density(reply_igraph),
+                                                                 git_density = igraph::edge_density(git_igraph))
+  
+  total_results = merge(total_results, result, by = 'Alias', all = T, suffixes = c(ifelse(i==1, 'Start', time_window[i-1]),start_day))
 }
 
 
