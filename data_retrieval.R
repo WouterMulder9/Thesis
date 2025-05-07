@@ -601,4 +601,7 @@ gcid <- igraph::graph_from_data_frame(d=project_collaboration_network[["edgelist
 visIgraph(gcid,randomSeed = 1)
 
 project_reply$reply_body = gsub("[\n]", "", iconv(project_reply$reply_body, from='ISO-8859-1', to = 'UTF-8'))
-write.csv(project_reply, '~/gits/test/data/geronimo_communication_2003-2007_test2.csv', quote = T, row.names = F)
+project_reply$reply_subject = gsub("[\n]", "", iconv(project_reply$reply_subject, from='ISO-8859-1', to = 'UTF-8'))
+project_reply$reply_body = gsub(";", "", project_reply$reply_body)
+project_reply$reply_subject = gsub(";", "", project_reply$reply_subject)
+write.csv(project_reply, '~/gits/test/data/geronimo_communication_2003-2007.csv', quote = T, row.names = F)
