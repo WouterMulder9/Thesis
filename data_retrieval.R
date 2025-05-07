@@ -575,10 +575,10 @@ for (j in 2:length(time_window)){
                                                                  ml_only_devs,
                                                                  ml_threads,
                                                                  code_ml_both_devs,
-                                                                 reply_degree = igraph::centr_degree(reply_igraph),
+                                                                 reply_degree = igraph::centr_degree(reply_igraph)$centralization,
                                                                  reply_close = igraph::centr_clo(reply_igraph)$centralization,
                                                                  reply_between = igraph::centr_betw(reply_igraph)$centralization,
-                                                                 git_degree = igraph::centr_degree(git_igraph),
+                                                                 git_degree = igraph::centr_degree(git_igraph)$centralization,
                                                                  git_close = igraph::centr_clo(git_igraph)$centralization,
                                                                  git_between = igraph::centr_betw(git_igraph)$centralization,
                                                                  reply_density = igraph::edge_density(reply_igraph),
@@ -587,6 +587,10 @@ for (j in 2:length(time_window)){
   total_results = merge(total_results, result, by = 'Alias', all = T, suffixes = c(ifelse(i==1, 'Start', time_window[i-1]),start_day))
 }
 
+network_interval <- rbindlist(network_data)
+
+fwrite(total_results, '~/gits/test/data/dev_data_geronimo.csv')
+fwrite(network_interval, '~/gits/test/data/bad_network_data_geronimo.csv')
 
 project_collaboration_network <- recolor_network_by_community(git_network_authors,code_clusters)
 
@@ -596,5 +600,5 @@ gcid <- igraph::graph_from_data_frame(d=project_collaboration_network[["edgelist
 
 visIgraph(gcid,randomSeed = 1)
 
-
-fwrite(project_reply, '~/gits/test/data/geronimo_communication_2003-2007.csv')
+project_reply$reply_body = gsub("[\n]", "", iconv(project_reply$reply_body, from='ISO-8859-1', to = 'UTF-8'))
+write.csv(project_reply, '~/gits/test/data/geronimo_communication_2003-2007_test2.csv', quote = T, row.names = F)
