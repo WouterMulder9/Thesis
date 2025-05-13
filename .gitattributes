@@ -2,3 +2,4 @@ data/geronimo_mbox.csv filter=lfs diff=lfs merge=lfs -text
 data/geronimo_communication_2003-2007.csv filter=lfs diff=lfs merge=lfs -text
 data/geronimo_communication_2003-2007_test.csv filter=lfs diff=lfs merge=lfs -text
 data/geronimo_communication_2003-2007_test2.csv filter=lfs diff=lfs merge=lfs -text
+data/network_data_geronimo.csv filter=lfs diff=lfs merge=lfs -text
