@@ -250,162 +250,14 @@ oslom_undir_path = '~/Downloads/OSLOM2/OSLOM2/oslom_undir'
 # Create a list where each element is the social smells calculated for a given commit hash
 smells <- list()
 size_time_window <- length(time_window)
-for(j in 2:size_time_window){
-  
-  # Initialize
-  commit_interval <- NA
-  start_day <- NA
-  end_day <- NA
-  org_silo <- NA
-  missing_links <- NA
-  radio_silence <- NA
-  primma_donna <- NA
-  st_congruence <- NA
-  communicability <- NA
-  num_tz <- NA
-  code_only_devs <- NA
-  code_files <- NA
-  ml_only_devs <- NA
-  ml_threads <- NA
-  code_ml_both_devs <- NA
-  
-  i <- j - 1
-  
-  # If the time window is of size 1, then there has been less than "window_size_f"
-  # days from the start date.
-  if(length(time_window)  == 1){
-    # Below 3 month size
-    start_day <- start_date
-    end_day <- end_date 
-  }else{
-    start_day <- time_window[i]
-    end_day <- time_window[j] 
-  }
-  
-  
-  # Note: The start and end commits in your project config file should be set so 
-  # that the dates cover overlapping date ranges in bothproject_git_slice and project_reply_slice dates.
-  # Double-check your project_git and project_reply to ensure this is the case if an error arises.
-  
-  # Obtain all commits from the gitlog which are within a particular window_size
-  project_git_slice <- project_git[(author_datetimetz >= start_day) & 
-                                     (author_datetimetz < end_day)]
-  
-  # Obtain all email posts from the reply which are within a particular window_size
-  project_reply_slice <- project_reply[(reply_datetimetz >= start_day) & 
-                                         (reply_datetimetz < end_day)]
-  
-  # Check if slices contain data
-  gitlog_exist <- (nrow(project_git_slice) != 0)
-  ml_exist <- (nrow(project_reply_slice) != 0)
-  
-  # Create Networks 
-  if(gitlog_exist){
-    i_commit_hash <- data.table::first(project_git_slice[project_git_slice$author_datetimetz == min(project_git_slice$author_datetimetz,na.rm=TRUE)])$commit_hash
-    
-    j_commit_hash <- data.table::first(project_git_slice[project_git_slice$author_datetimetz == max(project_git_slice$author_datetimetz,na.rm=TRUE)])$commit_hash
-    
-    # Parse networks edgelist from extracted data
-    network_git_slice <- transform_gitlog_to_bipartite_network(project_git_slice,
-                                                               mode="author-file")
-    # Community Smells functions are defined base of the projection networks of 
-    # dev-thread => dev-dev, and dev-file => dev-dev. This creates both dev-dev via graph projections
-    
-    git_network_authors <- bipartite_graph_projection(network_git_slice,
-                                                      mode = TRUE,
-                                                      weight_scheme_function = weight_scheme_sum_edges)
-    print(9)
-    code_clusters <- community_oslom(oslom_undir_path,
-                                     git_network_authors,
-                                     seed=seed,
-                                     n_runs = 1000,
-                                     is_weighted = TRUE)
-    print(1)
-    
-  }
-  if(ml_exist){
-    network_reply_slice <- transform_reply_to_bipartite_network(project_reply_slice)
-    
-    
-    reply_network_authors <- bipartite_graph_projection(network_reply_slice,
-                                                        mode = TRUE,
-                                                        weight_scheme_function = weight_scheme_sum_edges)    
-    
-    # Community Detection
-    
-    mail_clusters <- community_oslom(oslom_undir_path,
-                                     reply_network_authors,
-                                     seed=seed,
-                                     n_runs = 1000,
-                                     is_weighted = TRUE)
-    print(2)
-  }
-  # Metrics #
-  
-  if(gitlog_exist){
-    commit_interval <- stri_c(i_commit_hash,"-",j_commit_hash)
-    # Social Network Metrics 
-    code_only_devs <- length(unique(project_git_slice$identity_id))
-    code_files <- length(unique(project_git_slice$file_pathname))
-    print(3)
-    
-  }  
-  if(ml_exist){
-    # Smell
-    
-    radio_silence <- length(smell_radio_silence(mail.graph=reply_network_authors, 
-                                                clusters=mail_clusters))
-    
-    # Social Technical Metrics
-    ml_only_devs <- length(unique(project_reply_slice$identity_id))
-    ml_threads <- length(unique(project_reply_slice$reply_subject))
-    print(4)
-  }
-  if (ml_exist & gitlog_exist){
-    # Smells 
-    org_silo <- length(smell_organizational_silo(mail.graph=reply_network_authors,
-                                                 code.graph=git_network_authors))
-    
-    missing_links <- length(smell_missing_links(mail.graph=reply_network_authors,
-                                                code.graph=git_network_authors))
-    # Social Technical Metrics
-    st_congruence <- smell_sociotechnical_congruence(mail.graph=reply_network_authors,
-                                                     code.graph=git_network_authors)
-    #    communicability <- community_metric_mean_communicability(reply_network_authors,git_network_authors)
-    num_tz <- length(unique(c(project_git_slice$author_tz,
-                              project_git_slice$committer_tz,
-                              project_reply_slice$reply_tz)))
-    code_ml_both_devs <- length(intersect(unique(project_git_slice$identity_id),
-                                          unique(project_reply_slice$identity_id)))
-    
-  }
-  
-  # Aggregate Metrics
-  smells[[stringi::stri_c(start_day,"|",end_day)]] <- data.table(commit_interval,
-                                                                 start_datetime = start_day,
-                                                                 end_datetime = end_day,
-                                                                 org_silo,
-                                                                 missing_links,
-                                                                 radio_silence,
-                                                                 #primma_donna,
-                                                                 st_congruence,
-                                                                 #communicability,
-                                                                 num_tz,
-                                                                 code_only_devs,
-                                                                 code_files,
-                                                                 ml_only_devs,
-                                                                 ml_threads,
-                                                                 code_ml_both_devs)
-}
-smells_interval <- rbindlist(smells)
 
 # --------------------------------------------------------------------------------------------------
 # Good variables
 
 
 # Transform commit hashes into datetime so window_size can be used
-start_date <- project_reply[15954,"reply_datetimetz"][[1]]
-end_date <- project_reply[13627,"reply_datetimetz"][[1]]
+start_date <- project_reply[15951,"reply_datetimetz"][[1]]
+end_date <- project_reply[14732,"reply_datetimetz"][[1]]
 datetimes <- project_git$author_datetimetz
 reply_datetimes <- project_reply$reply_datetimetz
 
@@ -422,7 +274,7 @@ oslom_undir_path = '~/Downloads/OSLOM2/OSLOM2/oslom_undir'
 # Create a list where each element is the social smells calculated for a given commit hash
 network_data <- list()
 size_time_window <- length(time_window)
-total_results = data.table()
+total_results = c()
 # Create the wanted metrics per developer
 for (j in 2:length(time_window)){
   i <- j - 1
@@ -500,10 +352,6 @@ for (j in 2:length(time_window)){
     rownames(result) = git_network_authors$nodes$name
     
   }
-  
-  if (nrow(total_results)==0){
-    total_results$Alias = git_network_authors$nodes$name
-  }
   if (ml_exist & gitlog_exist){
     # Smells 
     org_silo <- unique(unlist(smell_organizational_silo(mail.graph=reply_network_authors,
@@ -541,16 +389,15 @@ for (j in 2:length(time_window)){
       total_dist = tryCatch(
         {
           neighbor_dist = sum(igraph::distances(reply_igraph, v = dev, to = neighbors_in_communication))
-          neighbor_dist + (git_diam+1)*missing_neighbors
+          (neighbor_dist + (git_diam+1)*missing_neighbors)/length(neighbors)
         }, error = function(w){
           print(paste0(dev, ' not found in communication network'))
           NA
         }
       )
       
-      neighbor_distances = c(neighbor_dist, total_dist)
+      neighbor_distances = c(neighbor_distances, total_dist)
     }
-    
     result = cbind('Avg. distance' = neighbor_distances, result)
     
     result = cbind('Messages Sent' = as.vector(table(project_reply_slice$reply_from)[git_network_authors$nodes$name]), result)
@@ -562,7 +409,8 @@ for (j in 2:length(time_window)){
     result = cbind('Workload' = workload_dt[match(workload_dt$author_name_email, git_network_authors$nodes$name),V1], result)
   }
   
-  
+  result = cbind('From' = as.POSIXct(start_day), result)
+  result = cbind('To' = as.POSIXct(end_day), result)
   
   # Aggregate Network Metrics
   network_data[[stringi::stri_c(start_day,"|",end_day)]] <- data.table(commit_interval,
@@ -584,10 +432,11 @@ for (j in 2:length(time_window)){
                                                                  reply_density = igraph::edge_density(reply_igraph),
                                                                  git_density = igraph::edge_density(git_igraph))
   
-  total_results = merge(total_results, result, by = 'Alias', all = T, suffixes = c(ifelse(i==1, 'Start', time_window[i-1]),start_day))
+  total_results = rbind(total_results, result)
 }
 
 network_interval <- rbindlist(network_data)
+network_interval = network_interval[,-c(1,5,6,7,8,9,10)]
 
 fwrite(total_results, '~/gits/test/data/dev_data_geronimo.csv')
 fwrite(network_interval, '~/gits/test/data/bad_network_data_geronimo.csv')
@@ -600,10 +449,14 @@ gcid <- igraph::graph_from_data_frame(d=project_collaboration_network[["edgelist
 
 visIgraph(gcid,randomSeed = 1)
 
-project_reply$reply_body = gsub("[\n]", "", iconv(project_reply$reply_body, from='ISO-8859-1', to = 'UTF-8'))
-project_reply$reply_subject = gsub("[\n]", "", iconv(project_reply$reply_subject, from='ISO-8859-1', to = 'UTF-8'))
+project_reply$reply_body = gsub("[\n]", "_/n_", iconv(project_reply$reply_body, from='ISO-8859-1', to = 'UTF-8'))
+project_reply$reply_subject = gsub("[\n]", "_/n_", iconv(project_reply$reply_subject, from='ISO-8859-1', to = 'UTF-8'))
 project_reply$in_reply_to_id = gsub("[\n]", "", iconv(project_reply$in_reply_to_id, from='ISO-8859-1', to = 'UTF-8'))
 project_reply$reply_id = gsub("[\n]", "", iconv(project_reply$reply_id, from='ISO-8859-1', to = 'UTF-8'))
+project_reply$reply_to = gsub("[\n]", "", iconv(project_reply$reply_to, from='ISO-8859-1', to = 'UTF-8'))
+project_reply$reply_cc = gsub("[\n]", "", iconv(project_reply$reply_cc, from='ISO-8859-1', to = 'UTF-8'))
+project_reply$reply_from = gsub("[\n]", "", iconv(project_reply$reply_from, from='ISO-8859-1', to = 'UTF-8'))
 project_reply$reply_body = gsub(";", "", project_reply$reply_body)
 project_reply$reply_subject = gsub(";", "", project_reply$reply_subject)
 write.csv(project_reply, '~/gits/test/data/geronimo_communication_2003-2007.csv', quote = T, row.names = F)
+
