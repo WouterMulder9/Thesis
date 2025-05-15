@@ -383,7 +383,7 @@ for (j in 2:length(time_window)){
     for (dev in git_network_authors$nodes$name){
       # Calculate the distances to the neighbours in the collaboration network
       neighbors = igraph::neighbors(git_igraph, dev)$name
-      neighbors_in_communication = intersect(neighbors, igraph::V(reply_igraph))
+      neighbors_in_communication = intersect(neighbors, igraph::V(reply_igraph)$name)
       missing_neighbors = length(neighbors) - length(neighbors_in_communication)
       
       total_dist = tryCatch(
@@ -411,7 +411,6 @@ for (j in 2:length(time_window)){
   
   result = cbind('From' = as.POSIXct(start_day), result)
   result = cbind('To' = as.POSIXct(end_day), result)
-  
   # Aggregate Network Metrics
   network_data[[stringi::stri_c(start_day,"|",end_day)]] <- data.table(commit_interval,
                                                                  start_datetime = start_day,
@@ -439,7 +438,7 @@ network_interval <- rbindlist(network_data)
 network_interval = network_interval[,-c(1,5,6,7,8,9,10)]
 
 fwrite(total_results, '~/gits/test/data/dev_data_geronimo.csv')
-fwrite(network_interval, '~/gits/test/data/bad_network_data_geronimo.csv')
+fwrite(network_interval, '~/gits/test/data/network_data_geronimo.csv')
 
 project_collaboration_network <- recolor_network_by_community(git_network_authors,code_clusters)
 
@@ -459,4 +458,3 @@ project_reply$reply_from = gsub("[\n]", "", iconv(project_reply$reply_from, from
 project_reply$reply_body = gsub(";", "", project_reply$reply_body)
 project_reply$reply_subject = gsub(";", "", project_reply$reply_subject)
 write.csv(project_reply, '~/gits/test/data/geronimo_communication_2003-2007.csv', quote = T, row.names = F)
-
