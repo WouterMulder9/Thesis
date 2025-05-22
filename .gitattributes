@@ -3,3 +3,16 @@ data/geronimo_communication_2003-2007.csv filter=lfs diff=lfs merge=lfs -text
 data/geronimo_communication_2003-2007_test.csv filter=lfs diff=lfs merge=lfs -text
 data/geronimo_communication_2003-2007_test2.csv filter=lfs diff=lfs merge=lfs -text
 data/network_data_geronimo.csv filter=lfs diff=lfs merge=lfs -text
+data/. filter=lfs diff=lfs merge=lfs -text
+data/dev_data_ambari.csv filter=lfs diff=lfs merge=lfs -text
+data/geronimo_github_replies.csv filter=lfs diff=lfs merge=lfs -text
+data/geronimo_githubs.csv filter=lfs diff=lfs merge=lfs -text
+data/ambari_communication_2018-2020.csv filter=lfs diff=lfs merge=lfs -text
+data/ambari_github_replies.csv filter=lfs diff=lfs merge=lfs -text
+data/ambari_mbox.csv filter=lfs diff=lfs merge=lfs -text
+data/bad_network_data_geronimo.csv filter=lfs diff=lfs merge=lfs -text
+data/dev_data_geronimo.csv filter=lfs diff=lfs merge=lfs -text
+data/geronimo_jira.csv filter=lfs diff=lfs merge=lfs -text
+data/network_data_ambari.csv filter=lfs diff=lfs merge=lfs -text
+data/ambari_githubs.csv filter=lfs diff=lfs merge=lfs -text
+data/ambari_jira.csv filter=lfs diff=lfs merge=lfs -text
