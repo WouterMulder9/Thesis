@@ -48,6 +48,7 @@ results$committer_tz <- sapply(stringi::stri_split(results$committer_datetimetz,
 results$committer_datetimetz <- as.POSIXct(results$committer_datetimetz,
                                                format = "%a %b %d %H:%M:%S %Y %z", tz = "UTC")
 
+
 fwrite(results, paste0('~/gits/test/data/',project_name,'_githubs.csv'))
 save_jira_credentials(domain = 'https://issues.apache.org/jira')
 
@@ -72,8 +73,8 @@ if(!is.null(mbox_paths)){
     mbox = download_mod_mbox_per_month(base_url = 'http://mail-archives.apache.org/mod_mbox',
                              mailing_list = mailing_list,
                              save_folder_path = paste0('~/mbox/',project_name,'/', mailing_list, '/'),
-                             from_year = 2003,
-                             to_year = 2007, verbose = T)
+                             from_year = from_year,
+                             to_year = to_year, verbose = T)
     }
     
     print(paste0('Saving ',mailing_list,' Mail data...'))
@@ -131,6 +132,7 @@ if(!is.null(jira_paths)){
   Sys.sleep(delay)
   }
 }
+
 fwrite(jira_result, paste0('~/gits/test/data/',project_name,'_jira.csv'))
 
 owner = 'apache'
@@ -361,7 +363,14 @@ for (j in 2:length(time_window)){
       
       total_dist = tryCatch(
         {
-          neighbor_dist = sum(Map(function(x) replace(x, is.infinite(x), git_diam+1),igraph::distances(reply_igraph, v = dev, to = neighbors_in_communication)))
+          neighbor_dist = sum(unlist(Map(function(x) replace(x, is.infinite(x), git_diam+1),igraph::distances(reply_igraph, v = dev, to = neighbors_in_communication))))
+          if (is.na(neighbor_dist)){
+            print('==================================')
+            print(igraph::distances(reply_igraph, v = dev, to = neighbors_in_communication))
+            print('------------------------------------')
+            print(unlist(Map(function(x) replace(x, is.infinite(x), git_diam+1),igraph::distances(reply_igraph, v = dev, to = neighbors_in_communication))))
+            print('=====================================')
+          }
           (neighbor_dist + (git_diam+1)*missing_neighbors)/length(neighbors)
         }, error = function(w){
           print(paste0(dev, ' not found in communication network'))
@@ -403,8 +412,10 @@ for (j in 2:length(time_window)){
                                                                  git_between = igraph::centr_betw(git_igraph)$centralization,
                                                                  reply_density = igraph::edge_density(reply_igraph),
                                                                  git_density = igraph::edge_density(git_igraph))
-  
+
+  if ((length(colnames(result)) == length(colnames(total_results))) || is.null(colnames(total_results))){
   total_results = rbind(total_results, result)
+  }
 }
 
 network_interval <- rbindlist(network_data)
@@ -422,7 +433,7 @@ project_reply$reply_cc = gsub("[\n]", "", iconv(project_reply$reply_cc, from='IS
 project_reply$reply_from = gsub("[\n]", "", iconv(project_reply$reply_from, from='ISO-8859-1', to = 'UTF-8'))
 project_reply$reply_body = gsub(";", "", project_reply$reply_body)
 project_reply$reply_subject = gsub(";", "", project_reply$reply_subject)
-write.csv(project_reply, paste0('~/gits/test/data/',project_name,'_communication_2003-2007.csv', quote = T, row.names = F))
+write.csv(project_reply, paste0('~/gits/test/data/',project_name,'_communication_',from_year,'-',to_year,'.csv'), quote = T, row.names = F)
 }
 
 project_collaboration_network <- recolor_network_by_community(git_network_authors,code_clusters)
