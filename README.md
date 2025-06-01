@@ -61,7 +61,7 @@ This model was used for robust sentiment scoring of developer messages across Gi
 
 This folder provides an implementation of the **Pretained Word2Vec model** as introduced by:
 
-> Vasiliki Efstathiou, Christos Chatzilenas and Diomidis Spinellis.
+> Vasiliki Efstathiou, Christos Chatzilenas and Diomidis Spinellis.    
 > *Word Embeddings for the Software Engineering Domain*, 2018
 
 This model was used for robust modelling of textual data to a vector space using a pretrained model which reflects the correlations of textual data in the Software Engineering field.
